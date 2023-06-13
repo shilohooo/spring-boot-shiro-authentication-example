@@ -1,0 +1,19 @@
+server:
+  servlet:
+    context-path: /login-demo
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: LoginDemo
+  jpa:
+    database-platform: MYSQL
+    database: mysql
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL57Dialect
