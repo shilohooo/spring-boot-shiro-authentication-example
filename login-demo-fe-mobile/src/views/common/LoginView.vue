@@ -6,7 +6,9 @@ import MyVersion from '@/components/common/MyVersion.vue'
 import { showFailToast } from 'vant/es'
 import { nanoid } from 'nanoid'
 import http from '@/utils/http-request'
-import { closeToast, showLoadingToast } from 'vant'
+import { closeToast, showLoadingToast, showSuccessToast } from 'vant'
+import Cookies from 'js-cookie'
+import { TOKEN_COOKIE_KEY } from '@/const/security'
 
 // 登录参数
 const loginData = reactive({
@@ -18,6 +20,8 @@ const loginData = reactive({
 })
 
 onMounted(() => {
+  const testCookie = Cookies.get('test')
+  console.log('testCookie', testCookie)
   getCaptcha()
 })
 
@@ -73,6 +77,7 @@ const loginFormRef = ref(null)
  * @author shiloh
  * @date 2023/6/10 11:14
  */
+const loginBtnLoading = ref(false)
 const login = async () => {
   try {
     await loginFormRef.value.validate()
@@ -80,6 +85,42 @@ const login = async () => {
       return showFailToast('请先勾选同意用户协议再进行操作')
     }
     console.log('登录参数', loginData)
+    showLoadingToast({ forbidClick: true, message: '正在登录中' })
+    loginBtnLoading.value = true
+    try {
+      const { data: res } = await http({
+        url: '/login',
+        method: 'POST',
+        data: loginData,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        }
+      })
+      if (!res || res.code !== 0) {
+        closeToast(false)
+        showFailToast({
+          message: res?.msg || '登录失败，请稍后再试',
+          forbidClick: true,
+          onClose: async () => {
+            await getCaptcha()
+          }
+        })
+        return
+      }
+      closeToast(false)
+      showSuccessToast({
+        forbidClick: true,
+        message: '登录成功',
+        duration: 1500,
+        onClose: () => {
+          // 登录成功后前往主页
+          Cookies.set(TOKEN_COOKIE_KEY, res.data)
+          router.replace({ name: 'home' })
+        }
+      })
+    } finally {
+      loginBtnLoading.value = false
+    }
   } catch (e) {
     console.error(e)
   }
@@ -152,7 +193,15 @@ const viewUserAgreement = () => {
         </template>
       </van-field>
       <div class="m-5 flex flex-col gap-5">
-        <van-button type="primary" block round @click="login">登录</van-button>
+        <van-button
+          type="primary"
+          text="登录"
+          block
+          round
+          :disabled="loginBtnLoading"
+          :loading="loginBtnLoading"
+          @click="login"
+        />
       </div>
       <div class="mt-5 flex justify-center items-center">
         <van-checkbox v-model="loginData.userAgreement" />
